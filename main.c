@@ -38,6 +38,23 @@ uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
 }
 
 void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx* ctx, uint32_t ks[4]) {
+    if (!Is_LFSR_Ready(ctx)) return;
+
+    for (int step = 0; step < 4; step++) {
+        // 1. Tính giá trị phản hồi mới (s_new)
+        uint32_t s_new = Calculate_LFSR_Feedback(ctx->s[0], ctx->s[3], ctx->s[9]);
+
+        // 2. Dịch chuyển trạng thái mảng (Shift 10 phần tử)
+        // Phần tử s[0] thoát ra, các phần tử s[i+1] lấp vào s[i]
+        for (int i = 0; i < 9; i++) {
+            ctx->s[i] = ctx->s[i + 1];
+        }
+
+        // 3. Nạp giá trị phản hồi mới vào ngăn cuối cùng s[9]
+        ctx->s[9] = s_new;
+        // 4. Kết hợp với FSM (R1, R2) để tạo ra 1 word dòng khóa
+        ks[step] = (ctx->s[9] + ctx->r1) ^ ctx->r2;
+    }
     // Thành viên 4 & 5 sẽ viết logic LFSR và FSM để nhả ra 4 word (16 byte) vào mảng ks
     // Tạm thời gán giá trị giả lập để code không bị lỗi khi test
     ks[0] = 0xAAAAAAAA; ks[1] = 0xBBBBBBBB; ks[2] = 0xCCCCCCCC; ks[3] = 0xDDDDDDDD;
