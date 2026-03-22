@@ -79,43 +79,75 @@ public:
 // =====================================================================
 // 3. HÀM MAIN() - QUẢN LÝ LUỒNG HỆ THỐNG 
 // =====================================================================
+// =====================================================================
+// 3. HÀM MAIN() - QUẢN LÝ LUỒNG HỆ THỐNG (Do bạn điều phối)
+// =====================================================================
 int main() {
-    SosemanukCore cipher;
-    vector<uint8_t> key(16, 0xAB); // Key 128-bit
-    vector<uint8_t> iv(16, 0xCD);  // IV 128-bit
+    SosemanukCtx cipher;
+    
+    // Khởi tạo mảng tĩnh 16 byte cho Key và IV trong C
+    uint8_t key[16] = {0xAB, 0x01, 0x02}; 
+    uint8_t iv[16]  = {0xCD, 0x03, 0x04}; 
 
     int choice;
     do {
-        cout << "\n=========================================\n";
-        cout << "       SOSEMANUK STREAM CIPHER DEMO      \n";
-        cout << "=========================================\n";
-        cout << "1. Ma hoa file\n";
-        cout << "2. Giai ma file\n";
-        cout << "5. Xem file ma hoa duoi dang Hex (Hex Dump)\n";
-        cout << "0. Thoat chuong trinh\n";
-        cout << "-----------------------------------------\n";
-        cout << "Nhap lua chon: ";
-        cin >> choice;
+        printf("\n=========================================\n");
+        printf("       SOSEMANUK STREAM CIPHER DEMO      \n");
+        printf("=========================================\n");
+        printf("1. Ma hoa file\n");
+        printf("2. Giai ma file\n");
+        printf("3. Nhap van ban moi (Ghi de vao input.txt)\n");
+        printf("4. Do hieu nang thuat toan (Benchmark 1MB)\n");
+        printf("5. Xem file ma hoa duoi dang Hex (Hex Dump)\n");
+        printf("0. Thoat chuong trinh\n");
+        printf("-----------------------------------------\n");
+        printf("Nhap lua chon: ");
+        scanf("%d", &choice);
 
         if (choice == 1) {
-            cipher.KeySetup(key); 
-            cipher.IVSetup(iv);
-            // Gọi hàm đọc file -> Gọi ProcessData của bạn -> Gọi hàm ghi file
-            cout << ">> Dang xu ly ma hoa...\n";
+            Sosemanuk_KeySetup(&cipher, key); 
+            Sosemanuk_IVSetup(&cipher, iv);
+            // TODO: Gọi hàm đọc file -> Gọi Sosemanuk_ProcessData -> Gọi hàm ghi file
+            printf(">> Dang xu ly ma hoa...\n");
             
         } else if (choice == 2) {
-            cipher.KeySetup(key); 
-            cipher.IVSetup(iv); 
-            // Gọi hàm đọc file -> Gọi ProcessData của bạn -> Gọi hàm ghi file
-            cout << ">> Dang xu ly giai ma...\n";
+            Sosemanuk_KeySetup(&cipher, key); 
+            Sosemanuk_IVSetup(&cipher, iv); 
+            // TODO: Gọi hàm đọc file -> Gọi Sosemanuk_ProcessData -> Gọi hàm ghi file
+            printf(">> Dang xu ly giai ma...\n");
+            
+        } else if (choice == 3) {
+            // =======================================================
+            // PHẦN CODE CỦA BẠN NẰM Ở ĐÂY
+            // =======================================================
+            printf("\nNhap doan van ban ban muon ma hoa: ");
+            
+            // Lời khuyên nhỏ: Khi dùng scanf("%d") ở trên, ký tự Enter (\n) vẫn còn kẹt trong bộ đệm.
+            // Bạn nên dùng hàm getchar() hoặc fflush(stdin) để dọn dẹp bộ đệm trước khi đọc chuỗi nhé!
+            
+            /* Viết code nhập chuỗi (vd: dùng fgets) và ghi ra file input.txt tại đây */
+            
+            
+            // =======================================================
+            printf(">> [OK] Da ghi noi dung moi vao file input.txt!\n");
+            
+        } else if (choice == 4) {
+            // Khởi tạo lại hệ thống trước khi đo hiệu năng
+            Sosemanuk_KeySetup(&cipher, key); 
+            Sosemanuk_IVSetup(&cipher, iv);
+            
+            printf("\n>> Dang chay Benchmark... \n");
+            // TODO: Chỗ này bạn sẽ gọi hàm do Thành viên Test (Benchmark) viết
             
         } else if (choice == 5) {
             // Giả lập hiển thị Hex Dump
-            vector<uint8_t> dummy_data = {0xDE, 0xAD, 0xBE, 0xEF};
-            UIHelper::PrintHexDump(dummy_data);
+            uint8_t dummy_data[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03};
+            UI_PrintHexDump(dummy_data, sizeof(dummy_data));
             
         } else if (choice == 0) {
-            cout << ">> Thoat chuong trinh.\n";
+            printf(">> Thoat chuong trinh.\n");
+        } else {
+            printf(">> Lua chon khong hop le!\n");
         }
     } while (choice != 0);
 
