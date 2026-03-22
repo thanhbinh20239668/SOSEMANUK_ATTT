@@ -25,6 +25,18 @@ void Sosemanuk_IVSetup(SosemanukCtx* ctx, const uint8_t* iv) {
 }
 
 // --- Ổ CẮM CHO THÀNH VIÊN 4 & 5 (Sinh dòng khóa) ---
+//Ham Kiem tra mang khong rong
+int Is_LFSR_Ready(SosemanukCtx* ctx) {
+    for (int i = 0; i < 10; i++) {
+        if (ctx->s[i] != 0) return 1;
+    }
+    return 0;
+}
+//Ham tinh toan phan hoi 
+uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
+    return (s0 << 1) ^ (s3 >> 1) ^ s9;
+}
+
 void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx* ctx, uint32_t ks[4]) {
     // Thành viên 4 & 5 sẽ viết logic LFSR và FSM để nhả ra 4 word (16 byte) vào mảng ks
     // Tạm thời gán giá trị giả lập để code không bị lỗi khi test
