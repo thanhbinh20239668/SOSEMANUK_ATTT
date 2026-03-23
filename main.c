@@ -4,36 +4,34 @@
 #include <string.h>
 const char *filename = "input.txt";
 const char *filename_out = "output.txt";
-// hàm đọc file từ file .txt . Kết quả đưa ra là mảng uint8_t*
-uint8_t *read_file_simple(const char *filename) {
+// Hàm đọc file trả về mảng uint8_t* và ghi kích thước vào out_size
+uint8_t *read_file_simple(const char *filename, size_t *out_size) {
   FILE *f = fopen(filename, "rb");
   if (!f)
     return NULL;
 
-  // Tự đo kích thước file
   fseek(f, 0, SEEK_END);
   long size = ftell(f);
   rewind(f);
 
-  // Cấp phát bộ nhớ + 1 byte cho ký tự kết thúc '\0'
-  uint8_t *buffer = (uint8_t *)malloc(size + 1);
+  uint8_t *buffer = (uint8_t *)malloc(size);
   if (buffer) {
     fread(buffer, 1, size, f);
-    buffer[size] = '\0'; // Đánh dấu kết thúc chuỗi
+    *out_size = size; // Lưu lại kích thước chuẩn
   }
 
   fclose(f);
   return buffer;
 }
-// ghi ra file output.txt
-void write_file_simple(const char *filename_out, uint8_t *data) {
-  if (data == NULL)
+
+// Hàm ghi file nhị phân (Bắt buộc phải truyền size)
+void write_file_simple(const char *filename_out, uint8_t *data, size_t size) {
+  if (data == NULL || size == 0)
     return;
 
   FILE *f = fopen(filename_out, "wb");
   if (f) {
-    // Sử dụng strlen để tự lấy kích thước dữ liệu
-    fwrite(data, 1, strlen((char *)data), f);
+    fwrite(data, 1, size, f);
     fclose(f);
   }
 }
@@ -208,14 +206,27 @@ int Is_LFSR_Ready(SosemanukCtx *ctx) {
   }
   return 0;
 }
+
 // Ham tinh toan phan hoi
-uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
-  return (s0 << 1) ^ (s3 >> 1) ^ s9;
+uint32_t mul_alpha(uint32_t c) {
+  uint8_t top_byte = (uint8_t)(c >> 24);
+  return (c << 8) ^ (top_byte == 0 ? 0 : (uint32_t)0xA9000000);
 }
 
+// Hàm chia cho alpha (nhân với alpha^-1) trong GF(2^32)
+uint32_t div_alpha(uint32_t c) {
+  uint8_t low_byte = (uint8_t)(c & 0xFF);
+  return (c >> 8) ^ (low_byte == 0 ? 0 : (uint32_t)0x000000A9);
+}
+
+// Hàm tính phản hồi LFSR
+uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
+  return s9 ^ div_alpha(s3) ^ mul_alpha(s0);
+}
 // S-box 2 của Serpent được triển khai bằng kỹ thuật Bitslice (tối ưu hóa các
 // cổng logic) Nó nhận vào 4 từ 32-bit (chính là 4 giá trị f_t từ FSM) và biến
 // đổi chúng
+
 void Sosemanuk_SBox2(uint32_t *w0, uint32_t *w1, uint32_t *w2, uint32_t *w3) {
   uint32_t t0, t1, t2, t3, t4, t5, t6, t7;
 
@@ -316,9 +327,9 @@ void UI_PrintHexDump(const uint8_t *data, size_t length) {
 // =====================================================================
 int main() {
   SosemanukCtx cipher;
-
+  size_t content_size = 0;
   // Lấy data từ file input.txt
-  uint8_t *content = read_file_simple("input.txt");
+  uint8_t *content = read_file_simple("input.txt", &content_size);
 
   // Khởi tạo mảng tĩnh 16 byte cho Key và IV trong C
   uint8_t key[16] = {0xAB, 0x01, 0x02};
