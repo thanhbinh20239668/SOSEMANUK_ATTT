@@ -18,10 +18,27 @@ typedef struct {
 // --- Ổ CẮM CHO THÀNH VIÊN 2 (Khởi tạo Key & IV) ---
 void Sosemanuk_KeySetup(SosemanukCtx* ctx, const uint8_t* key) {
     // Thành viên 2 sẽ viết thuật toán Serpent Key Schedule vào đây
+    for (int i = 0; i < 100; i++) {
+        uint32_t kWord = (key[(i % 16)] << 24) | 
+                         (key[((i+1) % 16)] << 16) | 
+                         (key[((i+2) % 16)] << 8)  | 
+                         key[((i+3) % 16)];
+        ctx->sk[i] = kWord ^ (uint32_t)i; // Tạo tính ngẫu nhiên giả
+    }
 }
 
 void Sosemanuk_IVSetup(SosemanukCtx* ctx, const uint8_t* iv) {
     // Thành viên 2 sẽ viết thuật toán nạp IV vào ctx->s và ctx->r1, r2 vào đây
+    for (int i = 0; i < 10; i++) {
+        uint32_t ivWord = (iv[(i % 16)] << 24) | 
+                          (iv[((i+1) % 16)] << 16) |
+                          (iv[((i+2) % 16)] << 8)  | 
+                          iv[((i+3) % 16)];
+        ctx->s[i] = ivWord ^ ctx->sk[i * 2]; // Khởi tạo s[0] đến s[9]
+    }
+    // Khởi tạo R1, R2 cho máy trạng thái FSM
+    ctx->r1 = (iv[0] << 24) | (iv[1] << 16) | (iv[2] << 8) | iv[3];
+    ctx->r2 = (iv[4] << 24) | (iv[5] << 16) | (iv[6] << 8) | iv[7];
 }
 
 // --- Ổ CẮM CHO THÀNH VIÊN 4 & 5 (Sinh dòng khóa) ---
