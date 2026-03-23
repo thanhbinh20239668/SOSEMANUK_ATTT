@@ -25,28 +25,74 @@ typedef struct {
 // =====================================================================
 // --- Ổ CẮM CHO THÀNH VIÊN 2 (Khởi tạo Key & IV) ---
 void Sosemanuk_KeySetup(SosemanukCtx* ctx, const uint8_t* key) {
-    // Thành viên 2 sẽ viết thuật toán Serpent Key Schedule vào đây
-    for (int i = 0; i < 100; i++) {
-        uint32_t kWord = (key[(i % 16)] << 24) | 
-                         (key[((i+1) % 16)] << 16) | 
-                         (key[((i+2) % 16)] << 8)  | 
-                         key[((i+3) % 16)];
-        ctx->sk[i] = kWord ^ (uint32_t)i; // Tạo tính ngẫu nhiên giả
+    uint32_t w[140]; 
+    uint8_t kList[32] = {0}; // Đệm 32 byte trống chuẩn
+    for (size_t i = 0; i < 16; i++) kList[i] = key[i]; // Giả định Khóa nhập 128-bit
+
+    // 1. Đệm Khóa chuẩn cực đoan lên 256-bit
+    w[0] = (kList[0]<<24)|(kList[1]<<16)|(kList[2]<<8)|kList[3];
+    w[1] = (kList[4]<<24)|(kList[5]<<16)|(kList[6]<<8)|kList[7];
+    w[2] = (kList[8]<<24)|(kList[9]<<16)|(kList[10]<<8)|kList[11];
+    w[3] = (kList[12]<<24)|(kList[13]<<16)|(kList[14]<<8)|kList[15];
+    w[4] = 0x80000000; // Bit đệm đỉnh, còn lại toàn 0
+    w[5] = 0; w[6] = 0; w[7] = 0;
+
+    // 2. Khai triển 132 Khóa nháp qua Tỷ Lệ Vàng (PHI)
+    for (int i = 8; i < 108; i++) {
+        uint32_t tmp = w[i-8] ^ w[i-5] ^ w[i-3] ^ w[i-1] ^ PHI ^ (i - 8);
+        w[i] = ROTL32(tmp, 11);
+    }
+
+    // 3. Nghiền Khóa qua S-BOX để ra 100 Subkeys Chính thức
+    for (int i = 0; i < 25; i++) { 
+        uint32_t x0 = w[8 + i*4], x1 = w[9 + i*4], x2 = w[10 + i*4], x3 = w[11 + i*4];
+        int sbox_id = (3 - i) % 8; // S-BOX chạy giật lùi S3, S2, S1...
+        if (sbox_id < 0) sbox_id += 8;
+        
+        Serpent_Sbox(sbox_id, &x0, &x1, &x2, &x3);
+        
+        ctx->sk[i*4 + 0] = x0; ctx->sk[i*4 + 1] = x1;
+        ctx->sk[i*4 + 2] = x2; ctx->sk[i*4 + 3] = x3;
     }
 }
 
 void Sosemanuk_IVSetup(SosemanukCtx* ctx, const uint8_t* iv) {
-    // Thành viên 2 sẽ viết thuật toán nạp IV vào ctx->s và ctx->r1, r2 vào đây
-    for (int i = 0; i < 10; i++) {
-        uint32_t ivWord = (iv[(i % 16)] << 24) | 
-                          (iv[((i+1) % 16)] << 16) |
-                          (iv[((i+2) % 16)] << 8)  | 
-                          iv[((i+3) % 16)];
-        ctx->s[i] = ivWord ^ ctx->sk[i * 2]; // Khởi tạo s[0] đến s[9]
+    uint8_t vList[16] = {0};
+    for (size_t i = 0; i < 16; i++) vList[i] = iv[i];
+
+    // Ép IV 16-byte vào Khối 4 từ
+    uint32_t x0 = (vList[0]<<24)|(vList[1]<<16)|(vList[2]<<8)|vList[3];
+    uint32_t x1 = (vList[4]<<24)|(vList[5]<<16)|(vList[6]<<8)|vList[7];
+    uint32_t x2 = (vList[8]<<24)|(vList[9]<<16)|(vList[10]<<8)|vList[11];
+    uint32_t x3 = (vList[12]<<24)|(vList[13]<<16)|(vList[14]<<8)|vList[15];
+
+    // Chạy đủ 24 Vòng Lặp Serpent mã hóa
+    for (int i = 0; i < 24; i++) {
+        // Trộn Subkeys
+        x0 ^= ctx->sk[i*4 + 0]; x1 ^= ctx->sk[i*4 + 1];
+        x2 ^= ctx->sk[i*4 + 2]; x3 ^= ctx->sk[i*4 + 3];
+
+        // Lăn qua S-BOX tiến lên S0, S1, S2...
+        int sbox_id = (i % 8);
+        Serpent_Sbox(sbox_id, &x0, &x1, &x2, &x3);
+
+        // Mở nắp Hứng Trạng Thái Rót Vào LFSR Ở Vòng 12 và 18 !!!
+        if (i == 11) { // Hết vòng 12 (i từ 0-11)
+            ctx->s[7] = x0; ctx->s[8] = x1; ctx->s[9] = x2; ctx->s[0] = x3;
+        } else if (i == 17) { // Hết vòng 18
+            ctx->s[1] = x0; ctx->s[2] = x1; ctx->s[3] = x2; ctx->s[4] = x3;
+        }
+
+        // Chạy Biến đổi Tuyến Tính cho các vòng 1-23
+        if (i < 23) Serpent_LT(&x0, &x1, &x2, &x3);
     }
-    // Khởi tạo R1, R2 cho máy trạng thái FSM
-    ctx->r1 = (iv[0] << 24) | (iv[1] << 16) | (iv[2] << 8) | iv[3];
-    ctx->r2 = (iv[4] << 24) | (iv[5] << 16) | (iv[6] << 8) | iv[7];
+    
+    // Nạp Khóa Vòng 24 chót
+    x0 ^= ctx->sk[96]; x1 ^= ctx->sk[97]; x2 ^= ctx->sk[98]; x3 ^= ctx->sk[99];
+
+    // Trút hết mẻ cuối chia cho LFSR và FSM
+    ctx->s[5] = x0; ctx->s[6] = x1; 
+    ctx->r1 = x2;   ctx->r2 = x3;
 }
 
 // --- Ổ CẮM CHO THÀNH VIÊN 4 & 5 (Sinh dòng khóa) ---
