@@ -19,7 +19,43 @@ typedef struct {
     uint32_t r1, r2;  // 2 biến trạng thái 32-bit của FSM
     uint32_t sk[100]; // 100 Khóa con (Subkeys) sinh ra từ thuật toán Serpent
 } SosemanukCtx;
+#define PHI 0x9E3779B9 // Hằng số Tỷ lệ vàng
 
+// 8 Bảng S-Box Hệ 16 của Serpent
+static const uint8_t SBOX[8][16] = {
+    { 3, 8,15, 1,10, 6, 5,11,14,13, 4, 2, 7, 0, 9,12 }, 
+    {15,12, 2, 7, 9, 0, 5,10, 1,11,14, 8, 6,13, 3, 4 }, 
+    { 8, 6, 7, 9, 3,12,10,15,13, 1,14, 4, 0,11, 5, 2 }, 
+    { 0,15,11, 8,12, 9, 6, 3,13, 1, 2, 4,10, 7, 5,14 }, 
+    { 1,15, 8, 3,12, 0,11, 6, 2, 5, 4,10, 9,14, 7,13 }, 
+    {15, 5, 2,11, 4,10, 9,12, 0, 3,14, 8,13, 6, 7, 1 }, 
+    { 7, 2,12, 5, 8, 4, 6,11,14, 9, 1,15,13, 3,10, 0 }, 
+    { 1,13,15, 0,14, 8, 2,11, 7, 4,12,10, 9, 3, 5, 6 }  
+};
+
+// Hàm S-Box dùng bảng tra (Lookup Table) tác động lên 4 từ 32-bit
+void Serpent_Sbox(int box_idx, uint32_t *x0, uint32_t *x1, uint32_t *x2, uint32_t *x3) {
+    uint32_t y0 = 0, y1 = 0, y2 = 0, y3 = 0;
+    for (int bit = 0; bit < 32; bit++) {
+        uint8_t input = (((*x0 >> bit) & 1))      | (((*x1 >> bit) & 1) << 1) | 
+                        (((*x2 >> bit) & 1) << 2) | (((*x3 >> bit) & 1) << 3);
+        uint8_t out = SBOX[box_idx][input];
+        y0 |= ((out)      & 1) << bit;  y1 |= ((out >> 1) & 1) << bit;
+        y2 |= ((out >> 2) & 1) << bit;  y3 |= ((out >> 3) & 1) << bit;
+    }
+    *x0 = y0; *x1 = y1; *x2 = y2; *x3 = y3;
+}
+
+// Máy Trộn Tuyến tính (Linear Transformation)
+void Serpent_LT(uint32_t *x0, uint32_t *x1, uint32_t *x2, uint32_t *x3) {
+    *x0 = ROTL32(*x0, 13); *x2 = ROTL32(*x2, 3);
+    *x1 = *x1 ^ *x0 ^ *x2;
+    *x3 = *x3 ^ *x2 ^ (*x0 << 3);
+    *x1 = ROTL32(*x1, 1);  *x3 = ROTL32(*x3, 7);
+    *x0 = *x0 ^ *x1 ^ *x3;
+    *x2 = *x2 ^ *x3 ^ (*x1 << 7);
+    *x0 = ROTL32(*x0, 5);  *x2 = ROTL32(*x2, 22);
+}
 // =====================================================================
 // CÁC "Ổ CẮM" CHỜ CÁC THÀNH VIÊN KHÁC
 // =====================================================================
