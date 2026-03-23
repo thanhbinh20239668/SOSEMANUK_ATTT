@@ -65,24 +65,41 @@ uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
 void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx* ctx, uint32_t ks[4]) {
     if (!Is_LFSR_Ready(ctx)) return;
 
-    for (int step = 0; step < 4; step++) {
-        // 1. Tính giá trị phản hồi mới (s_new)
-        uint32_t s_new = Calculate_LFSR_Feedback(ctx->s[0], ctx->s[3], ctx->s[9]);
+    uint32_t f_out[4]; // Mảng tạm để lưu 4 giá trị đầu ra của FSM
+    
+    // Lưu lại 4 giá trị LFSR ban đầu trước khi bị dịch chuyển
+    uint32_t s_init[4] = {ctx->s[0], ctx->s[1], ctx->s[2], ctx->s[3]};
 
-        // 2. Dịch chuyển trạng thái mảng (Shift 10 phần tử)
-        // Phần tử s[0] thoát ra, các phần tử s[i+1] lấp vào s[i]
+    for (int step = 0; step < 4; step++) {
+        // --- LOGIC FSM ---
+        uint32_t f_t = (ctx->s[9] + ctx->r1) ^ ctx->r2; // Sinh giá trị f_t
+        f_out[step] = f_t; // Lưu f_t vào mảng tạm để lát nữa đưa qua S-box
+        
+        uint32_t s1 = ctx->s[1];
+        uint32_t s8 = ctx->s[8];
+        uint32_t mux_out = (ctx->r1 & 1) ? (s1 ^ s8) : s1;
+        
+        uint32_t r1_old = ctx->r1;
+        ctx->r1 = ctx->r2 + mux_out;      // Phép cộng modulo 2^32
+        ctx->r2 = Sosemanuk_Trans(r1_old);
+
+        // --- LOGIC LFSR ---
+        uint32_t s_new = Calculate_LFSR_Feedback(ctx->s[0], ctx->s[3], ctx->s[9]);
         for (int i = 0; i < 9; i++) {
             ctx->s[i] = ctx->s[i + 1];
         }
-
-        // 3. Nạp giá trị phản hồi mới vào ngăn cuối cùng s[9]
         ctx->s[9] = s_new;
-        // 4. Kết hợp với FSM (R1, R2) để tạo ra 1 word dòng khóa
-        ks[step] = (ctx->s[9] + ctx->r1) ^ ctx->r2;
     }
-    // Thành viên 4 & 5 sẽ viết logic LFSR và FSM để nhả ra 4 word (16 byte) vào mảng ks
-    // Tạm thời gán giá trị giả lập để code không bị lỗi khi test
-    ks[0] = 0xAAAAAAAA; ks[1] = 0xBBBBBBBB; ks[2] = 0xCCCCCCCC; ks[3] = 0xDDDDDDDD;
+
+    // --- PHẦN KẾT HỢP S-BOX ---
+    // Đưa 4 giá trị f_t qua S-box 2 của Serpent
+    Sosemanuk_SBox2(&f_out[0], &f_out[1], &f_out[2], &f_out[3]);
+
+    // Sinh ra 4 word dòng khóa bằng cách XOR đầu ra S-box với mảng s_init cũ
+    ks[0] = f_out[0] ^ s_init[0];
+    ks[1] = f_out[1] ^ s_init[1];
+    ks[2] = f_out[2] ^ s_init[2];
+    ks[3] = f_out[3] ^ s_init[3];
 }
 
 // =====================================================================
