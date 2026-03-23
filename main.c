@@ -144,6 +144,28 @@ uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
     return (s0 << 1) ^ (s3 >> 1) ^ s9;
 }
 
+// S-box 2 của Serpent được triển khai bằng kỹ thuật Bitslice (tối ưu hóa các cổng logic)
+// Nó nhận vào 4 từ 32-bit (chính là 4 giá trị f_t từ FSM) và biến đổi chúng
+void Sosemanuk_SBox2(uint32_t *w0, uint32_t *w1, uint32_t *w2, uint32_t *w3) {
+    uint32_t t0, t1, t2, t3, t4, t5, t6, t7;
+    
+    // Các phương trình đại số logic tối ưu cho S-box 2
+    t0 = ~(*w0);
+    t1 = *w1 ^ *w3;
+    t2 = t0 ^ t1;
+    t3 = *w2 ^ t1;
+    t4 = *w1 & t3;
+    t5 = t2 ^ t4;
+    t6 = *w3 | t5;
+    t7 = *w0 ^ t6;
+    
+    // Ghi đè kết quả biến đổi trở lại 4 biến đầu vào
+    *w1 = t3 ^ t7;
+    *w3 = *w2 | t7;
+    *w2 = t5 ^ *w3;
+    *w0 = t2 ^ *w3;
+}
+
 void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx* ctx, uint32_t ks[4]) {
     if (!Is_LFSR_Ready(ctx)) return;
 
