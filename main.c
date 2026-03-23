@@ -140,10 +140,21 @@ int Is_LFSR_Ready(SosemanukCtx* ctx) {
     return 0;
 }
 //Ham tinh toan phan hoi 
-uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
-    return (s0 << 1) ^ (s3 >> 1) ^ s9;
+uint32_t mul_alpha(uint32_t c) {
+    uint8_t top_byte = (uint8_t)(c >> 24);
+    return (c << 8) ^ (top_byte == 0 ? 0 : (uint32_t)0xA9000000);
 }
 
+// Hàm chia cho alpha (nhân với alpha^-1) trong GF(2^32)
+uint32_t div_alpha(uint32_t c) {
+    uint8_t low_byte = (uint8_t)(c & 0xFF);
+    return (c >> 8) ^ (low_byte == 0 ? 0 : (uint32_t)0x000000A9);
+}
+
+// Hàm tính phản hồi LFSR
+uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
+    return s9 ^ div_alpha(s3) ^ mul_alpha(s0);
+}
 // S-box 2 của Serpent được triển khai bằng kỹ thuật Bitslice (tối ưu hóa các cổng logic)
 // Nó nhận vào 4 từ 32-bit (chính là 4 giá trị f_t từ FSM) và biến đổi chúng
 void Sosemanuk_SBox2(uint32_t *w0, uint32_t *w1, uint32_t *w2, uint32_t *w3) {
