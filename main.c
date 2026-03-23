@@ -3,6 +3,14 @@
 #include <stdint.h>
 #include <string.h>
 
+// Macro xoay trái bit (Rotate Left) để dùng cho hàm Trans
+#define ROTL32(v, n) (((v) << (n)) | ((v) >> (32 - (n))))
+
+// Hàm Trans: Nhân giá trị với hằng số và xoay bit để khuếch tán dữ liệu (Diffusion)
+uint32_t Sosemanuk_Trans(uint32_t x) {
+    return ROTL32(x * 0x54655307, 7);
+}
+
 // =====================================================================
 // 1. CẤU TRÚC DỮ LIỆU TỔNG THỂ 
 // =====================================================================
