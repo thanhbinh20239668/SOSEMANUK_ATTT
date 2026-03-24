@@ -24,7 +24,7 @@ uint8_t *read_file_simple(const char *filename, size_t *out_size) {
   return buffer;
 }
 
-// Hàm ghi file nhị phân (Bắt buộc phải truyền size)
+// Hàm ghi file nhị phân
 void write_file_simple(const char *filename_out, uint8_t *data, size_t size) {
   if (data == NULL || size == 0)
     return;
@@ -40,7 +40,6 @@ void write_file_simple(const char *filename_out, uint8_t *data, size_t size) {
 #define ROTL32(v, n) (((v) << (n)) | ((v) >> (32 - (n))))
 
 // Hàm Trans: Nhân giá trị với hằng số và xoay bit để khuếch tán dữ liệu
-// (Diffusion)
 uint32_t Sosemanuk_Trans(uint32_t x) { return ROTL32(x * 0x54655307, 7); }
 
 // =====================================================================
@@ -96,10 +95,8 @@ void Serpent_LT(uint32_t *x0, uint32_t *x1, uint32_t *x2, uint32_t *x3) {
   *x0 = ROTL32(*x0, 5);
   *x2 = ROTL32(*x2, 22);
 }
-// =====================================================================
-// CÁC "Ổ CẮM" CHỜ CÁC THÀNH VIÊN KHÁC
-// =====================================================================
-// --- Ổ CẮM CHO THÀNH VIÊN 2 (Khởi tạo Key & IV) ---
+
+// Khởi tạo Key & IV
 void Sosemanuk_KeySetup(SosemanukCtx *ctx, const uint8_t *key) {
   uint32_t w[140];
   uint8_t kList[32] = {0}; // Đệm 32 byte trống chuẩn
@@ -166,7 +163,7 @@ void Sosemanuk_IVSetup(SosemanukCtx *ctx, const uint8_t *iv) {
     int sbox_id = (i % 8);
     Serpent_Sbox(sbox_id, &x0, &x1, &x2, &x3);
 
-    // Mở nắp Hứng Trạng Thái Rót Vào LFSR Ở Vòng 12 và 18 !!!
+    // Mở nắp Hứng Trạng Thái Rót Vào LFSR Ở Vòng 12 và 18
     if (i == 11) { // Hết vòng 12 (i từ 0-11)
       ctx->s[7] = x0;
       ctx->s[8] = x1;
@@ -197,7 +194,7 @@ void Sosemanuk_IVSetup(SosemanukCtx *ctx, const uint8_t *iv) {
   ctx->r2 = x3;
 }
 
-// --- Ổ CẮM CHO THÀNH VIÊN 4 & 5 (Sinh dòng khóa) ---
+// Sinh dòng khóa
 // Ham Kiem tra mang khong rong
 int Is_LFSR_Ready(SosemanukCtx *ctx) {
   for (int i = 0; i < 10; i++) {
@@ -223,10 +220,8 @@ uint32_t div_alpha(uint32_t c) {
 uint32_t Calculate_LFSR_Feedback(uint32_t s0, uint32_t s3, uint32_t s9) {
   return s9 ^ div_alpha(s3) ^ mul_alpha(s0);
 }
-// S-box 2 của Serpent được triển khai bằng kỹ thuật Bitslice (tối ưu hóa các
-// cổng logic) Nó nhận vào 4 từ 32-bit (chính là 4 giá trị f_t từ FSM) và biến
-// đổi chúng
 
+// S-box 2 của Serpent được triển khai bằng kỹ thuật Bitslice (tối ưu hóa các cổng logic) Nó nhận vào 4 từ 32-bit (chính là 4 giá trị f_t từ FSM) và biến đổi chúng
 void Sosemanuk_SBox2(uint32_t *w0, uint32_t *w1, uint32_t *w2, uint32_t *w3) {
   uint32_t t0, t1, t2, t3, t4, t5, t6, t7;
 
@@ -257,7 +252,7 @@ void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx *ctx, uint32_t ks[4]) {
   uint32_t s_init[4] = {ctx->s[0], ctx->s[1], ctx->s[2], ctx->s[3]};
 
   for (int step = 0; step < 4; step++) {
-    // --- LOGIC FSM ---
+    // LOGIC FSM
     uint32_t f_t = (ctx->s[9] + ctx->r1) ^ ctx->r2; // Sinh giá trị f_t
     f_out[step] = f_t; // Lưu f_t vào mảng tạm để lát nữa đưa qua S-box
 
@@ -269,7 +264,7 @@ void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx *ctx, uint32_t ks[4]) {
     ctx->r1 = ctx->r2 + mux_out; // Phép cộng modulo 2^32
     ctx->r2 = Sosemanuk_Trans(r1_old);
 
-    // --- LOGIC LFSR ---
+    // LOGIC LFSR
     uint32_t s_new = Calculate_LFSR_Feedback(ctx->s[0], ctx->s[3], ctx->s[9]);
     for (int i = 0; i < 9; i++) {
       ctx->s[i] = ctx->s[i + 1];
@@ -277,7 +272,7 @@ void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx *ctx, uint32_t ks[4]) {
     ctx->s[9] = s_new;
   }
 
-  // --- PHẦN KẾT HỢP S-BOX ---
+  // PHẦN KẾT HỢP S-BOX
   // Đưa 4 giá trị f_t qua S-box 2 của Serpent
   Sosemanuk_SBox2(&f_out[0], &f_out[1], &f_out[2], &f_out[3]);
 
@@ -367,7 +362,7 @@ int main() {
           write_file_simple("encrypted.bin", content, content_size);
           printf(">> [OK] Da ma hoa xong %zu bytes. File dau ra: 'encrypted.bin'\n", content_size);
           
-          // BƯỚC 5: Quan trọng! Giải phóng RAM để tránh rò rỉ bộ nhớ
+          // BƯỚC 5: Giải phóng RAM để tránh rò rỉ bộ nhớ
           free(content); 
       }
 
