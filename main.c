@@ -450,10 +450,20 @@ int main() {
         free(dummy_buffer);
       }
 
-    } else if (choice == 5) {
-      // Chức năng Hex Dump
-      uint8_t dummy_data[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03};
-      UI_PrintHexDump(dummy_data, sizeof(dummy_data));
+} else if (choice == 5) {
+      // Chức năng Hex Dump ĐỌC FILE THẬT
+      size_t enc_size = 0;
+      uint8_t *enc_data = read_file_simple("encrypted.bin", &enc_size);
+      
+      if (enc_data == NULL) {
+        printf(">> [Loi] Chua co file 'encrypted.bin'. Ban hay ma hoa file truoc (Chon 1)!\n");
+      } else {
+        // Chỉ in tối đa 256 byte đầu tiên để tránh tràn màn hình Console
+        size_t print_size = (enc_size > 256) ? 256 : enc_size; 
+        printf("\n>> Hien thi Hex Dump cua file 'encrypted.bin':\n");
+        UI_PrintHexDump(enc_data, print_size);
+        free(enc_data); // Giải phóng RAM
+      }
 
     } else if (choice == 0) {
       printf(">> Thoat chuong trinh.\n");
