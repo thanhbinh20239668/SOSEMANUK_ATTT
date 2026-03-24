@@ -327,9 +327,6 @@ void UI_PrintHexDump(const uint8_t *data, size_t length) {
 // =====================================================================
 int main() {
   SosemanukCtx cipher;
-  size_t content_size = 0;
-  // Lấy data từ file input.txt
-  uint8_t *content = read_file_simple("input.txt", &content_size);
 
   // Khởi tạo mảng tĩnh 16 byte cho Key và IV trong C
   uint8_t key[16] = {0xAB, 0x01, 0x02};
@@ -351,16 +348,52 @@ int main() {
     scanf("%d", &choice);
 
     if (choice == 1) {
+      // BƯỚC 1: Setup Key và IV
       Sosemanuk_KeySetup(&cipher, key);
       Sosemanuk_IVSetup(&cipher, iv);
-      // TODO: Gọi hàm đọc file -> Gọi Sosemanuk_ProcessData -> Gọi hàm ghi file
       printf(">> Dang xu ly ma hoa...\n");
 
+      // BƯỚC 2: Đọc dữ liệu từ file văn bản rõ
+      size_t content_size = 0;
+      uint8_t *content = read_file_simple("input.txt", &content_size);
+      
+      if (content == NULL) {
+          printf(">> [Loi] Khong tim thay hoac khong the doc file 'input.txt'!\n");
+      } else {
+          // BƯỚC 3: Xử lý mã hóa
+          Sosemanuk_ProcessData(&cipher, content, content_size);
+          
+          // BƯỚC 4: Ghi kết quả ra file nhị phân
+          write_file_simple("encrypted.bin", content, content_size);
+          printf(">> [OK] Da ma hoa xong %zu bytes. File dau ra: 'encrypted.bin'\n", content_size);
+          
+          // BƯỚC 5: Quan trọng! Giải phóng RAM để tránh rò rỉ bộ nhớ
+          free(content); 
+      }
+
     } else if (choice == 2) {
+      // BƯỚC 1: Setup Key và IV 
       Sosemanuk_KeySetup(&cipher, key);
       Sosemanuk_IVSetup(&cipher, iv);
-      // TODO: Gọi hàm đọc file -> Gọi Sosemanuk_ProcessData -> Gọi hàm ghi file
       printf(">> Dang xu ly giai ma...\n");
+
+      // BƯỚC 2: Đọc dữ liệu TỪ FILE ĐÃ MÃ HÓA
+      size_t content_size = 0;
+      uint8_t *content = read_file_simple("encrypted.bin", &content_size);
+      
+      if (content == NULL) {
+          printf(">> [Loi] Khong tim thay file 'encrypted.bin'. Ban phai ma hoa (Chon 1) truoc!\n");
+      } else {
+          // BƯỚC 3: Xử lý giải mã 
+          Sosemanuk_ProcessData(&cipher, content, content_size);
+          
+          // BƯỚC 4: Ghi kết quả trả lại file văn bản
+          write_file_simple("decrypted.txt", content, content_size);
+          printf(">> [OK] Da giai ma xong %zu bytes. Kiem tra file: 'decrypted.txt'\n", content_size);
+          
+          // BƯỚC 5: Giải phóng RAM
+          free(content);
+      }
 
     } else if (choice == 3) {
       // =======================================================
