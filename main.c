@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 const char *filename = "input.txt";
 const char *filename_out = "output.txt";
 // Hàm đọc file trả về mảng uint8_t* và ghi kích thước vào out_size
@@ -425,23 +426,48 @@ int main() {
       }
 
     } else if (choice == 4) {
-      Sosemanuk_KeySetup(&cipher, key);
-      Sosemanuk_IVSetup(&cipher, iv);
+      printf("\n>> Dang chay Benchmark... Xin vui long doi trong giay lat.\n");
 
-      printf("\n>> Dang chay Benchmark... \n");
-      // TODO: Chỗ này bạn sẽ gọi hàm do Thành viên Test (Benchmark) viết
+      size_t mb_size = 1024 * 1024;
+      uint8_t *dummy_buffer = (uint8_t *)malloc(mb_size);
+      
+      if (dummy_buffer == NULL) {
+        printf(">> [Loi] Khong the cap phat bo nho!\n");
+      } else {
+        memset(dummy_buffer, 0, mb_size);
+        Sosemanuk_KeySetup(&cipher, key);
+        Sosemanuk_IVSetup(&cipher, iv);
+
+        int iterations = 100; // Chạy 100MB để đo cho chuẩn
+        clock_t start_time = clock();
+
+        for (int i = 0; i < iterations; i++) {
+          Sosemanuk_ProcessData(&cipher, dummy_buffer, mb_size);
+        }
+
+        clock_t end_time = clock();
+        double time_taken = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+        if (time_taken > 0) {
+          printf(">> [Thanh cong] Da xu ly xong %d MB.\n", iterations);
+          printf(">> [Hieu nang] Toc do: %.2f MB/s\n", (double)iterations / time_taken);
+        }
+        free(dummy_buffer);
+      }
 
     } else if (choice == 5) {
-      // Giả lập hiển thị Hex Dump
+      // Chức năng Hex Dump
       uint8_t dummy_data[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03};
       UI_PrintHexDump(dummy_data, sizeof(dummy_data));
 
     } else if (choice == 0) {
       printf(">> Thoat chuong trinh.\n");
+
     } else {
       printf(">> Lua chon khong hop le!\n");
     }
-  } while (choice != 0);
+
+  } while (choice != 0); // Đóng vòng lặp do-while
 
   return 0;
-}
+} 
