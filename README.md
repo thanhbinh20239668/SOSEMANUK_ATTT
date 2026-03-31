@@ -1,126 +1,44 @@
-🔐 SOSEMANUK Stream Cipher (C Implementation)
-📌 Overview
+# 🛡️ SOSEMANUK Stream Cipher Implementation (C Language)
 
-This project implements the SOSEMANUK stream cipher in C.
-SOSEMANUK is a high-performance stream cipher designed in the eSTREAM project, combining:
+Dự án triển khai thuật toán mã hóa dòng **SOSEMANUK**, một trong những thuật toán chiến thắng trong dự án **eSTREAM** (Profile 1 - Software-oriented). Thuật toán kết hợp thiết kế giữa hệ thống thanh ghi dịch phản hồi tuyến tính (LFSR) và máy trạng thái hữu hạn (FSM).
 
-Linear Feedback Shift Register (LFSR)
-Finite State Machine (FSM)
-Reduced-round Serpent block cipher
+---
 
-The program supports encryption, decryption, benchmarking, and file inspection.
+## 🏗️ Kiến trúc thuật toán
 
-⚙️ Features
-🔒 Encrypt file (input.txt → encrypted.bin)
-🔓 Decrypt file (encrypted.bin → decrypted.txt)
-✍️ Input custom plaintext from keyboard
-⚡ Performance benchmark (MB/s)
-🔍 Hex dump of encrypted data
-🏗️ Project Structure
-.
-├── main.c
-├── input.txt
-├── encrypted.bin
-├── decrypted.txt
-└── README.md
-🔑 Algorithm Components
-1. Key Setup
-Expands a 128-bit key into 100 subkeys
-Uses:
-Golden ratio constant (PHI)
-Serpent S-Boxes
-Bit rotations (ROTL)
-2. IV Setup
-Uses a 128-bit IV
-Runs 24 rounds of Serpent-like transformation
-Initializes:
-LFSR state (s[10])
-FSM registers (r1, r2)
-3. LFSR (Linear Feedback Shift Register)
-10 × 32-bit registers
-Feedback function:
-s_new = s9 ^ div_alpha(s3) ^ mul_alpha(s0);
-4. FSM (Finite State Machine)
+Hệ thống mã hóa SOSEMANUK trong code được xây dựng dựa trên 3 thành phần cốt lõi:
 
-Generates intermediate value:
+### 1. LFSR (Linear Feedback Shift Register)
+* Gồm 10 thanh ghi 32-bit ($s_0$ đến $s_9$).
+* Hoạt động trên trường hữu hạn $GF(2^{32})$.
+* Đóng vai trò cung cấp tính chất thống kê và chu kỳ dài cho dòng khóa.
 
-f_t = (s9 + r1) ^ r2;
-5. S-Box (Serpent S2)
-Non-linear transformation
-Operates on 4 × 32-bit words using bitslice technique
-6. Keystream Generation
-Generates 16 bytes per iteration
-Combines:
-FSM output
-S-Box transformation
-Previous LFSR state
-🔐 Encryption Principle
+### 2. FSM (Finite State Machine)
+* Sử dụng 2 biến trạng thái nội bộ $R1, R2$.
+* Kết hợp với đầu ra của LFSR để tạo ra giá trị phi tuyến $f_t$.
+* Sử dụng hàm `Trans` (phép nhân và xoay bit `ROTL32`) để khuếch tán dữ liệu.
 
-SOSEMANUK is a stream cipher, so:
+### 3. Serpent Components
+* **S-Box:** Sử dụng bảng tra (Lookup Table) từ thuật toán Serpent để khởi tạo khóa.
+* **Bitslice S-Box 2:** Được tối ưu hóa bằng các cổng logic (XOR, AND, OR, NOT) để xử lý 4 words dữ liệu cùng lúc trong hàm `Sosemanuk_SBox2`.
+* **Linear Transformation (LT):** Tăng cường độ xáo trộn giữa các bit trong quá trình Setup IV.
 
-Ciphertext = Plaintext XOR Keystream
-Plaintext  = Ciphertext XOR Keystream
+---
 
-👉 Encryption and decryption use the same function.
+## 🚀 Tính năng chương trình
 
-🚀 Usage
-Compile
+Chương trình cung cấp một giao diện Console trực quan với các chức năng:
+* **Mã hóa file:** Đọc `input.txt` -> Xuất `encrypted.bin`.
+* **Giải mã file:** Đọc `encrypted.bin` -> Khôi phục `decrypted.txt`.
+* **Ghi đè Input:** Nhập văn bản trực tiếp để thử nghiệm nhanh.
+* **Benchmark:** Đo tốc độ mã hóa thực tế (MB/s) của thuật toán trên phần cứng hiện tại.
+* **Hex Dump:** Xem dữ liệu dưới dạng mã hexa để kiểm tra cấu trúc file nhị phân.
+
+---
+
+## 💻 Hướng dẫn sử dụng
+
+### Biên dịch
+Sử dụng trình biên dịch GCC hoặc Clang:
+```bash
 gcc main.c -o sosemanuk
-Run
-./sosemanuk
-📋 Menu Options
-Option	Description
-1	Encrypt file
-2	Decrypt file
-3	Input new plaintext
-4	Benchmark (1MB × 100 iterations)
-5	Hex dump encrypted file
-0	Exit
-🧪 Example Workflow
-Choose 3 → enter plaintext
-Choose 1 → encrypt → encrypted.bin
-Choose 2 → decrypt → decrypted.txt
-⚡ Benchmark
-Processes 100 MB of data
-Outputs performance in MB/s
-🧠 Technical Details
-Rotate Left (ROTL)
-#define ROTL32(v, n) (((v) << (n)) | ((v) >> (32 - (n))))
-Finite Field Operations
-mul_alpha() → multiplication in GF(2^32)
-div_alpha() → division in GF(2^32)
-Implemented using lookup tables
-⚠️ Notes
-Key and IV are currently hardcoded:
-uint8_t key[16] = {0xAB, 0x01, 0x02};
-uint8_t iv[16]  = {0xCD, 0x03, 0x04};
-
-👉 For real applications:
-
-Use secure random key/IV
-Never reuse IV with same key
-🔧 Future Improvements
- User-defined key and IV
- Streaming for large files
- SIMD optimization (AVX/NEON)
- Integration with embedded systems (ESP32, RP2040)
- Compare with AES / ChaCha20
-📚 References
-SOSEMANUK Specification (eSTREAM)
-Serpent Block Cipher
-Cryptography Engineering
-👨‍💻 Author
-Cryptography implementation for study and benchmarking purposes
-🏁 Conclusion
-
-This project demonstrates:
-
-Practical implementation of a stream cipher
-Integration of LFSR, FSM, and S-Box
-Real-world encryption/decryption workflow
-
-👉 Suitable for:
-
-Cryptography learning
-Performance testing
-Embedded system applications
