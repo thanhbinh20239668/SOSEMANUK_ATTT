@@ -25,7 +25,7 @@ gcc -O2 -o sosemanuk sosemanuk.c
 
 Chương trình cung cấp menu: nhập văn bản, mã hoá `input.txt` → `encrypted.bin`, giải mã ngược lại, xem hex dump, và benchmark tốc độ (MB/s).
 
-## 4. Giải thích nội dung trong ảnh và cơ sở toán học của `mul_table`/`div_table`
+## 4. Giải thích cơ sở toán học của `mul_table`/`div_table`
 
 Ảnh gốc ghi: *"SOSEMANUK, giải thích bằng Mul_table và Div_table làm rõ cách tìm giá trị alpha"*. Đây là phần toán trên trường hữu hạn dùng để tính phản hồi LFSR (`Calculate_LFSR_Feedback`).
 
