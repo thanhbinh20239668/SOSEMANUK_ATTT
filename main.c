@@ -386,6 +386,80 @@ void UI_PrintHexDump(const uint8_t *data, size_t length) {
 }
 
 // =====================================================================
+// 2.5 TU KIEM TRA KEY/IV SETUP (SELF-TEST) - phan bo sung, khong doi code cu
+// =====================================================================
+// Chi goi lai cac ham da co san (Sosemanuk_KeySetup, Sosemanuk_IVSetup,
+// Sosemanuk_ProcessData, Sosemanuk_GenerateKeystreamBlock) de kiem chung,
+// khong sua doi ben trong bat ky ham nao trong so do.
+void Sosemanuk_SelfTest_KeyIV(void) {
+  printf("\n=========================================\n");
+  printf("   TU KIEM TRA KEY/IV SETUP (SELF-TEST)   \n");
+  printf("=========================================\n");
+
+  uint8_t testKey[16] = {0xAB, 0x01, 0x02};
+  uint8_t testIV[16]  = {0xCD, 0x03, 0x04};
+  int pass_count = 0, total = 3;
+
+  // --- Test 1: Round-trip ma hoa/giai ma phai tra ve dung du lieu goc ---
+  {
+    uint8_t plain[32];
+    for (int i = 0; i < 32; i++) plain[i] = (uint8_t)(i * 7 + 1);
+    uint8_t buf[32];
+    memcpy(buf, plain, 32);
+
+    SosemanukCtx ctxEnc;
+    Sosemanuk_KeySetup(&ctxEnc, testKey);
+    Sosemanuk_IVSetup(&ctxEnc, testIV);
+    Sosemanuk_ProcessData(&ctxEnc, buf, 32);
+
+    SosemanukCtx ctxDec;
+    Sosemanuk_KeySetup(&ctxDec, testKey);
+    Sosemanuk_IVSetup(&ctxDec, testIV);
+    Sosemanuk_ProcessData(&ctxDec, buf, 32);
+
+    int ok = (memcmp(buf, plain, 32) == 0);
+    printf("[%s] Round-trip ma hoa/giai ma dung du lieu goc\n", ok ? "PASS" : "FAIL");
+    if (ok) pass_count++;
+  }
+
+  // --- Test 2: Setup cung Key/IV phai cho trang thai giong het nhau (tinh dinh) ---
+  {
+    SosemanukCtx ctxA, ctxB;
+    Sosemanuk_KeySetup(&ctxA, testKey);
+    Sosemanuk_IVSetup(&ctxA, testIV);
+    Sosemanuk_KeySetup(&ctxB, testKey);
+    Sosemanuk_IVSetup(&ctxB, testIV);
+    int ok = (memcmp(&ctxA, &ctxB, sizeof(SosemanukCtx)) == 0);
+    printf("[%s] Setup cung Key/IV cho trang thai giong het nhau\n", ok ? "PASS" : "FAIL");
+    if (ok) pass_count++;
+  }
+
+  // --- Test 3: Doi 1 bit IV phai lam keystream sinh ra khac di (do nhay IV) ---
+  {
+    uint8_t iv2[16];
+    memcpy(iv2, testIV, 16);
+    iv2[0] ^= 0x01;
+
+    SosemanukCtx ctx1, ctx2;
+    Sosemanuk_KeySetup(&ctx1, testKey);
+    Sosemanuk_IVSetup(&ctx1, testIV);
+    Sosemanuk_KeySetup(&ctx2, testKey);
+    Sosemanuk_IVSetup(&ctx2, iv2);
+
+    uint32_t ks1[4], ks2[4];
+    Sosemanuk_GenerateKeystreamBlock(&ctx1, ks1);
+    Sosemanuk_GenerateKeystreamBlock(&ctx2, ks2);
+
+    int ok = (memcmp(ks1, ks2, sizeof(ks1)) != 0);
+    printf("[%s] Doi 1 bit IV lam keystream thay doi (do nhay IV)\n", ok ? "PASS" : "FAIL");
+    if (ok) pass_count++;
+  }
+
+  printf("-----------------------------------------\n");
+  printf(">> Ket qua: %d/%d test PASS\n", pass_count, total);
+}
+
+// =====================================================================
 // 3. HÀM MAIN() - QUẢN LÝ LUỒNG HỆ THỐNG
 // =====================================================================
 int main() {
@@ -405,6 +479,7 @@ int main() {
     printf("3. Nhap van ban moi (Ghi de vao input.txt)\n");
     printf("4. Do hieu nang thuat toan (Benchmark 1MB)\n");
     printf("5. Xem file ma hoa duoi dang Hex (Hex Dump)\n");
+    printf("6. Tu kiem tra Key/IV Setup (Self-test)\n");
     printf("0. Thoat chuong trinh\n");
     printf("-----------------------------------------\n");
     printf("Nhap lua chon: ");
@@ -555,6 +630,9 @@ int main() {
         free(enc_data); // Giải phóng RAM
       }
 
+    } else if (choice == 6) {
+      Sosemanuk_SelfTest_KeyIV();
+
     } else if (choice == 0) {
       printf(">> Thoat chuong trinh.\n");
 
@@ -565,4 +643,4 @@ int main() {
   } while (choice != 0); // Đóng vòng lặp do-while
 
   return 0;
-} 
+}
