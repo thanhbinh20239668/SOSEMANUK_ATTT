@@ -19,7 +19,7 @@ SOSEMANUK là một **stream cipher** (mã dòng) hướng phần mềm, do nhó
 ## 3. Biên dịch & chạy
 
 ```bash
-gcc -O2 -o sosemanuk sosemanuk.c
+gcc -O2 -o sosemanuk main.c
 ./sosemanuk
 ```
 
