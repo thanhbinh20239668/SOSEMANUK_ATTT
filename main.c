@@ -310,45 +310,44 @@ void Sosemanuk_SBox2(uint32_t *w0, uint32_t *w1, uint32_t *w2, uint32_t *w3) {
   *w0 = t2 ^ *w3;
 }
 
+// FSM: sinh gia tri dau ra f_t tu s9, r1, r2
+uint32_t FSM_Output(uint32_t s9, uint32_t r1, uint32_t r2) {
+    return (s9 + r1) ^ r2;
+}
+// FSM: cap nhat R1, R2 sau moi buoc
+// MUX chon dau vao theo bit 0 cua R1, cong modulo 2^32, bien doi Trans
+void FSM_Update(uint32_t *r1, uint32_t *r2, uint32_t s1, uint32_t s8) {
+    uint32_t mux_out = (*r1 & 1) ? (s1 ^ s8) : s1;
+    uint32_t r1_old  = *r1;
+    *r1 = *r2 + mux_out;
+    *r2 = Sosemanuk_Trans(r1_old);
+}
+
 void Sosemanuk_GenerateKeystreamBlock(SosemanukCtx *ctx, uint32_t ks[4]) {
-  if (!Is_LFSR_Ready(ctx))
-    return;
+    if (!Is_LFSR_Ready(ctx))
+        return;
 
-  uint32_t f_out[4]; // Mảng tạm để lưu 4 giá trị đầu ra của FSM
+    uint32_t f_out[4];
+    uint32_t s_init[4] = {ctx->s[0], ctx->s[1], ctx->s[2], ctx->s[3]};
 
-  // Lưu lại 4 giá trị LFSR ban đầu trước khi bị dịch chuyển
-  uint32_t s_init[4] = {ctx->s[0], ctx->s[1], ctx->s[2], ctx->s[3]};
+    for (int step = 0; step < 4; step++) {
+        // FSM sinh f_t roi cap nhat R1, R2
+        f_out[step] = FSM_Output(ctx->s[9], ctx->r1, ctx->r2);
+        FSM_Update(&ctx->r1, &ctx->r2, ctx->s[1], ctx->s[8]);
 
-  for (int step = 0; step < 4; step++) {
-    // LOGIC FSM
-    uint32_t f_t = (ctx->s[9] + ctx->r1) ^ ctx->r2; // Sinh giá trị f_t
-    f_out[step] = f_t; // Lưu f_t vào mảng tạm để lát nữa đưa qua S-box
-
-    uint32_t s1 = ctx->s[1];
-    uint32_t s8 = ctx->s[8];
-    uint32_t mux_out = (ctx->r1 & 1) ? (s1 ^ s8) : s1;
-
-    uint32_t r1_old = ctx->r1;
-    ctx->r1 = ctx->r2 + mux_out; // Phép cộng modulo 2^32
-    ctx->r2 = Sosemanuk_Trans(r1_old);
-
-    // LOGIC LFSR
-    uint32_t s_new = Calculate_LFSR_Feedback(ctx->s[0], ctx->s[3], ctx->s[9]);
-    for (int i = 0; i < 9; i++) {
-      ctx->s[i] = ctx->s[i + 1];
+        // LFSR dich chuyen
+        uint32_t s_new = Calculate_LFSR_Feedback(ctx->s[0], ctx->s[3], ctx->s[9]);
+        for (int i = 0; i < 9; i++)
+            ctx->s[i] = ctx->s[i + 1];
+        ctx->s[9] = s_new;
     }
-    ctx->s[9] = s_new;
-  }
 
-  // PHẦN KẾT HỢP S-BOX
-  // Đưa 4 giá trị f_t qua S-box 2 của Serpent
-  Sosemanuk_SBox2(&f_out[0], &f_out[1], &f_out[2], &f_out[3]);
-
-  // Sinh ra 4 word dòng khóa bằng cách XOR đầu ra S-box với mảng s_init cũ
-  ks[0] = f_out[0] ^ s_init[0];
-  ks[1] = f_out[1] ^ s_init[1];
-  ks[2] = f_out[2] ^ s_init[2];
-  ks[3] = f_out[3] ^ s_init[3];
+    // S-box 2 tao phi tuyen, XOR voi LFSR de ra keystream
+    Sosemanuk_SBox2(&f_out[0], &f_out[1], &f_out[2], &f_out[3]);
+    ks[0] = f_out[0] ^ s_init[0];
+    ks[1] = f_out[1] ^ s_init[1];
+    ks[2] = f_out[2] ^ s_init[2];
+    ks[3] = f_out[3] ^ s_init[3];
 }
 
 // =====================================================================
