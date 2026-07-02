@@ -103,18 +103,3 @@ div_table[b] = (b⊗β¹⁶) || (b⊗β¹⁶⊗β²³) || (b⊗β¹⁶⊗β²⁴
 
 Cấu trúc **đối xứng với `mul_table`**, chỉ khác việc nhân thêm `β¹⁶` (nghịch đảo nhân của `β²³⁹`) trước khi tra hệ số.
 
-### 4.5 Kiểm chứng số liệu — không dừng lại ở lý thuyết suông
-
-Đã dựng lại `GF(2⁸)` bằng chính `Q(X)` ở trên, tính `β²³, β²⁴⁵, β⁴⁸, β²³⁹, β¹⁶`, rồi tái tạo `mul_table`/`div_table` hoàn toàn từ công thức 4.3–4.4 và đối chiếu với mảng hằng số trong code:
-
-| Vị trí | Tính lại từ toán học | Trong code | Khớp? |
-|---|---|---|---|
-| `mul_table[0]` | `0x00000000` | `0x00000000` | ✅ |
-| `mul_table[1]` | `0xE19FCF13` | `0xE19FCF13` | ✅ |
-| `mul_table[255]` | `0x3F53B5EB` | `0x3F53B5EB` | ✅ |
-| `div_table[1]` | `0x180F40CD` | `0x180F40CD` | ✅ |
-| `div_table[255]` | `0xB6F3A5E2` | `0xB6F3A5E2` | ✅ |
-
-Ngoài ra `φ(β²³)` tính lại ra đúng `0xE1` như đặc tả gốc nêu, xác nhận cả `Q(X)` lẫn cách dựng `β` đều đúng.
-
-**Kết luận và giới hạn của kết luận này:** hai bảng `mul_table`/`div_table` là chính xác theo đặc tả toán học gốc của SOSEMANUK — không phải hằng số tự chế hay sai lệch. Đây **chỉ** xác nhận đúng phần số học trường hữu hạn `GF(2³²)`; nó *không* chứng minh toàn bộ cài đặt đúng, vì các phần khác (thứ tự S-box trong `KeySetup`, hằng số dịch trong `Serpent_LT`, điểm trích xuất LFSR ở vòng 12/18 trong `IVSetup`) là những khối độc lập, cần được đối chiếu test vector riêng.
