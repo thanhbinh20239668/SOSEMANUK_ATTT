@@ -421,35 +421,57 @@ int main() {
       }
 
     } else if (choice == 4) {
-      printf("\n>> Dang chay Benchmark... Xin vui long doi trong giay lat.\n");
-
-      size_t mb_size = 1024 * 1024;
-      uint8_t *dummy_buffer = (uint8_t *)malloc(mb_size);
+      printf("\n=========================================\n");
+      printf("           BENCHMARK HIEU NANG           \n");
+      printf("=========================================\n");
+      printf("Nhap dung luong ban muon test (MB): ");
       
-      if (dummy_buffer == NULL) {
-        printf(">> [Loi] Khong the cap phat bo nho!\n");
+      int iterations = 0;
+      scanf("%d", &iterations);
+
+      if (iterations <= 0) {
+        printf(">> [Loi] Dung luong MB phai lon hon 0!\n");
       } else {
-        memset(dummy_buffer, 0, mb_size);
-        Sosemanuk_KeySetup(&cipher, key);
-        Sosemanuk_IVSetup(&cipher, iv);
+        printf("\n>> Dang chay Benchmark %d MB... Xin vui long doi trong giay lat.\n", iterations);
 
-        int iterations = 100; // Chạy 100MB để đo cho chuẩn
-        clock_t start_time = clock();
+        // Kích thước 1MB
+        size_t mb_size = 1024 * 1024; 
+        uint8_t *dummy_buffer = (uint8_t *)malloc(mb_size);
+        
+        if (dummy_buffer == NULL) {
+          printf(">> [Loi] Khong the cap phat %zu bytes bo nho RAM!\n", mb_size);
+        } else {
+          // Fill mảng bằng dữ liệu giả (0xAA) thay vì chỉ toàn số 0
+          memset(dummy_buffer, 0xAA, mb_size); 
+          
+          // Setup lại Key và IV để đảm bảo trạng thái thuật toán luôn sạch trước khi đo
+          Sosemanuk_KeySetup(&cipher, key);
+          Sosemanuk_IVSetup(&cipher, iv);
 
-        for (int i = 0; i < iterations; i++) {
-          Sosemanuk_ProcessData(&cipher, dummy_buffer, mb_size);
+          // Bắt đầu tính giờ
+          clock_t start_time = clock();
+
+          for (int i = 0; i < iterations; i++) {
+            Sosemanuk_ProcessData(&cipher, dummy_buffer, mb_size);
+          }
+
+          // Kết thúc tính giờ
+          clock_t end_time = clock();
+          double time_taken = (double)(end_time - start_time) / CLOCKS_PER_SEC;
+
+          printf("-----------------------------------------\n");
+          if (time_taken > 0) {
+            printf(">> [Thanh cong] Da ma hoa xong %d MB.\n", iterations);
+            printf(">> Thoi gian chay   : %.4f giay\n", time_taken);
+            printf(">> [Hieu nang] Toc do: %.2f MB/s\n", (double)iterations / time_taken);
+          } else {
+            printf(">> Thoi gian chay qua nhanh (gan nhu 0s). Hay thu tang so MB len (VD: 500 hoac 1000)!\n");
+          }
+          
+          // Giải phóng bộ nhớ
+          free(dummy_buffer);
         }
-
-        clock_t end_time = clock();
-        double time_taken = (double)(end_time - start_time) / CLOCKS_PER_SEC;
-
-        if (time_taken > 0) {
-          printf(">> [Thanh cong] Da xu ly xong %d MB.\n", iterations);
-          printf(">> [Hieu nang] Toc do: %.2f MB/s\n", (double)iterations / time_taken);
-        }
-        free(dummy_buffer);
       }
-
     } else if (choice == 5) {
       // Chức năng Hex Dump
       uint8_t dummy_data[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03};
