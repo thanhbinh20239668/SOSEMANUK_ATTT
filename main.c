@@ -458,6 +458,36 @@ void Sosemanuk_SelfTest_KeyIV(void) {
   printf(">> Ket qua: %d/%d test PASS\n", pass_count, total);
 }
 
+// Demo phi tuyen: flip 1 bit R1 xem f_t va trang thai thay doi the nao
+void FSM_Demo_NonLinearity(void) {
+    printf("\n=========================================\n");
+    printf("      DEMO PHI TUYEN FSM (R1 / R2)       \n");
+    printf("=========================================\n");
+
+    uint32_t r1 = 0x12345678, r2 = 0xABCDEF01;
+    uint32_t s9 = 0xDEADBEEF, s1 = 0xCAFEBABE, s8 = 0x01020304;
+
+    uint32_t ft = FSM_Output(s9, r1, r2);
+    printf("R1=0x%08X  R2=0x%08X  f_t=0x%08X\n", r1, r2, ft);
+
+    uint32_t r1b = r1, r2b = r2;
+    FSM_Update(&r1b, &r2b, s1, s8);
+    printf("Sau Update: R1=0x%08X  R2=0x%08X\n", r1b, r2b);
+
+    // Flip bit 0 cua R1, so sanh
+    uint32_t r1_flip = r1 ^ 1;
+    uint32_t ft_flip = FSM_Output(s9, r1_flip, r2);
+    printf("\nFlip bit0 R1: f_t=0x%08X  diff=0x%08X  => %s\n",
+           ft_flip, ft ^ ft_flip,
+           (ft != ft_flip) ? "phi tuyen OK" : "khong doi (loi)");
+
+    uint32_t r1f = r1_flip, r2f = r2;
+    FSM_Update(&r1f, &r2f, s1, s8);
+    printf("R1_moi diff = 0x%08X  R2_moi diff = 0x%08X\n",
+           r1f ^ r1b, r2f ^ r2b);
+    printf("-----------------------------------------\n");
+}
+
 // =====================================================================
 // 3. HÀM MAIN() - QUẢN LÝ LUỒNG HỆ THỐNG
 // =====================================================================
@@ -479,6 +509,7 @@ int main() {
     printf("4. Do hieu nang thuat toan (Benchmark 1MB)\n");
     printf("5. Xem file ma hoa duoi dang Hex (Hex Dump)\n");
     printf("6. Tu kiem tra Key/IV Setup (Self-test)\n");
+    printf("7. Demo phi tuyen FSM\n");
     printf("0. Thoat chuong trinh\n");
     printf("-----------------------------------------\n");
     printf("Nhap lua chon: ");
@@ -631,6 +662,9 @@ int main() {
 
     } else if (choice == 6) {
       Sosemanuk_SelfTest_KeyIV();
+
+    } else if (choice == 7) {
+      FSM_Demo_NonLinearity();
 
     } else if (choice == 0) {
       printf(">> Thoat chuong trinh.\n");
